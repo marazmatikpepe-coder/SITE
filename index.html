@@ -1,1 +1,321 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRAIGSLIST XI — Leonardo AI Edition</title>
+    <script src="https://unpkg.com"></script>
+    <link href="https://googleapis.com" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #02040a;
+            --surface: rgba(11, 15, 25, 0.75);
+            --surface-card: rgba(22, 28, 45, 0.7);
+            --accent: #8b5cf6;
+            --accent-glow: rgba(139, 92, 246, 0.3);
+            --text: #f3f4f6;
+            --text-muted: #9ca3af;
+            --border: rgba(255, 255, 255, 0.06);
+            --radius: 20px;
+        }
 
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Urbanist', 'Space Grotesk', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Интеграция ваших живых GIF-панелей на фон */
+        .bg-gif-left, .bg-gif-right {
+            position: fixed;
+            top: 0;
+            width: 35vw;
+            height: 100vh;
+            object-fit: cover;
+            opacity: 0.12;
+            z-index: -1;
+            pointer-events: none;
+            filter: blur(20px) contrast(1.2);
+        }
+        .bg-gif-left { left: 0; }
+        .bg-gif-right { right: 0; transform: scaleX(-1); }
+
+        .blur-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: radial-gradient(circle at center, transparent 20%, var(--bg) 90%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Премиум стеклянный Header */
+        header {
+            background: rgba(4, 7, 16, 0.5);
+            backdrop-filter: blur(30px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            background: linear-gradient(135deg, #fff 40%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .lang-btn {
+            background: var(--surface-card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px 18px;
+            border-radius: 14px;
+            cursor: pointer;
+            font-weight: 700;
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-post {
+            background: linear-gradient(135deg, #a855f7 0%, var(--accent) 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 0 25px var(--accent-glow);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-post:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 40px rgba(139, 92, 246, 0.6);
+        }
+
+        /* Главная сетка */
+        .wrapper {
+            max-width: 1400px;
+            margin: 40px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 40px;
+        }
+
+        @media (max-width: 1024px) {
+            .wrapper { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: var(--surface);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            height: fit-content;
+        }
+
+        .search-input {
+            width: 100%;
+            background: var(--surface-card);
+            border: 1px solid var(--border);
+            padding: 16px 16px 16px 48px;
+            border-radius: 14px;
+            color: white;
+            font-size: 15px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        /* Меню категорий */
+        .menu-list {
+            list-style: none;
+            margin-top: 24px;
+        }
+
+        .menu-list li {
+            padding: 16px;
+            border-radius: 14px;
+            cursor: pointer;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            color: var(--text-muted);
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .menu-list li:hover, .menu-list li.active {
+            background: rgba(139, 92, 246, 0.15);
+            color: var(--text);
+            border-left: 4px solid var(--accent);
+        }
+
+        /* Лента объявлений */
+        .ads-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+            gap: 28px;
+        }
+
+        .card {
+            background: var(--surface);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card:hover {
+            border-color: var(--accent);
+            transform: translateY(-6px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 20px rgba(139, 92, 246, 0.1);
+        }
+
+        .card-img {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            background: #0b0f19;
+            transition: transform 0.5s;
+        }
+
+        .card:hover .card-img {
+            transform: scale(1.05);
+        }
+
+        .card-content {
+            padding: 24px;
+            background: linear-gradient(to top, rgba(11,15,25,0.9), transparent);
+        }
+
+        .card-price {
+            font-size: 24px;
+            font-weight: 800;
+            color: #10b981;
+            margin-bottom: 8px;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 18px;
+            line-height: 1.5;
+            color: #f3f4f6;
+        }
+
+        .card-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Модальное окно создания */
+        .modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(2, 4, 10, 0.9);
+            backdrop-filter: blur(20px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            opacity: 0; pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .modal.open { opacity: 1; pointer-events: auto; }
+
+        .modal-content {
+            background: #0b0f19;
+            border: 1px solid var(--accent);
+            padding: 40px;
+            border-radius: 28px;
+            width: 100%; max-width: 550px;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(139, 92, 246, 0.3);
+        }
+
+        .close-modal {
+            position: absolute; top: 24px; right: 24px;
+            background: none; border: none; color: white; cursor: pointer;
+        }
+
+        .form-group { margin-bottom: 24px; }
+        .form-group label { display: block; margin-bottom: 10px; font-size: 14px; color: var(--text-muted); }
+        .form-control {
+            width: 100%; background: var(--surface-card); border: 1px solid var(--border);
+            padding: 16px; border-radius: 14px; color: white; outline: none; font-size: 15px;
+        }
+        .form-control:focus { border-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
+    </style>
+</head>
+<body>
+
+    <!-- Ваши живые гифки для фона -->
+    <img src="https://i.ibb.co/KxnDxpy9/41dc064b6d7e7363a9db85c6d0fd4512-720w.gif" class="bg-gif-left" alt="bg-left">
+    <img src="https://i.ibb.co/VWrbHMCz/e547a49aafbfb859edd10f6aaf4ac61f.gif" class="bg-gif-right" alt="bg-right">
+    <div class="blur-overlay"></div>
+
+    <header>
+        <div class="header-container">
+            <div class="logo">CRAIGSLIST XI</div>
+            <div class="controls">
+                <select class="lang-btn" id="lang" onchange="updateLang()">
+                    <option value="ru">🇷🇺 RU</option>
+                    <option value="en">🇺🇸 EN</option>
+                </select>
+                <button class="btn-post" onclick="toggleModal(true)">
+                    <i data-lucide="plus-circle"></i><span id="txt-create">Создать объявление</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="wrapper">
+        <aside>
+            <div class="panel">
+                <div style="position:relative;">
+                    <i data-lucide="search" style="position:absolute; left:16px; top:18px; color:var(--text-muted)"></i>
+                    <input type="text" class="search-input" id="search" placeholder="Поиск предложений..." oninput="draw()">
+                </div>
+                
+                <ul class="menu-list">
